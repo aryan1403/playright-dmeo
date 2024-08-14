@@ -31,31 +31,37 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: blob-report-${{ matrix.shardIndex }}
-        path: blob-report
+        path: all-blob-reports
         retention-days: 1
-  merge-report:
+  jobs:
+...
+  merge-reports:
+    # Merge reports after playwright-tests, even if some shards have failed
     if: ${{ !cancelled() }}
     needs: [playwright-tests]
 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
-      - name: Download blob reports from github actions artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: blob-report
-          pattern: blob-report-*
-          merge-multiple: true
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 18
+    - name: Install dependencies
+      run: npm ci
 
-      - name: Merge into HTML reports
-        run: npm playwright merge-reports --reporter html ./blob-report
+    - name: Download blob reports from GitHub Actions Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: all-blob-reports
+        pattern: blob-report-*
+        merge-multiple: true
 
-      - name: Upload HTML Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: html-report--attempt-${{ github.run_attempt }}
-          path: playwright-report
-          retention-days: 10
+    - name: Merge into HTML Report
+      run: npx playwright merge-reports --reporter html ./all-blob-reports
+
+    - name: Upload HTML report
+      uses: actions/upload-artifact@v4
+      with:
+        name: html-report--attempt-${{ github.run_attempt }}
+        path: playwright-report
+        retention-days: 14
